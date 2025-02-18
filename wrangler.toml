@@ -9,3 +9,19 @@ binding = "DB"
 database_name = "simple-db"
 database_id = "YOUR DB ID"
 migrations_dir = "drizzle"
+
+[[durable_objects.bindings]]
+name = "AGENT_DURABLE_OBJECT"
+class_name = "AgentDurableObject"
+
+# Durable Object migrations.
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#migrations
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AgentDurableObject"]
+
+# We need rules so we can import migrations in the next steps
+[[rules]] 
+type = "Text"
+globs = ["**/*.sql"]
+fallthrough = true

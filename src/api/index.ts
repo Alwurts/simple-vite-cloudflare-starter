@@ -3,6 +3,8 @@ import agents from "./routes/agents";
 import type { HonoVariables } from "@/types/hono";
 import { honoDbMiddleware } from "@/lib/hono/middleware";
 
+export { AgentDurableObject } from "@/server/durable-objects/agent/agent-durable-object";
+
 const app = new Hono<HonoVariables>().use(honoDbMiddleware);
 
 const routes = app.route("/agents", agents).all("*", async (c) => {

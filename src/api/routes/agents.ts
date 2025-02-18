@@ -14,6 +14,8 @@ const app = new Hono<HonoVariables>().post(
 	),
 	async (c) => {
 		const { name } = await c.req.valid("json");
+		const { AGENT_DURABLE_OBJECT } = c.env;
+
 		const db = c.get("db");
 		const [result] = await db
 			.insert(usersTable)
@@ -24,9 +26,25 @@ const app = new Hono<HonoVariables>().post(
 			throw new Error("Failed to create user");
 		}
 
+		const agentId = AGENT_DURABLE_OBJECT.idFromString(result.id.toString());
+		const agent = AGENT_DURABLE_OBJECT.get(agentId);
+
+		await agent.migrate();
+
+		await agent.upsertAgentConfig({
+			id: result.id.toString(),
+			name: result.name,
+			systemPrompt: "You are a helpful assistant.",
+		});
+
+		const agentConfig = await agent.getAgentConfig(result.id.toString());
+
 		console.log("result", result);
 
-		return c.json(result);
+		return c.json({
+			result,
+			agentConfig,
+		});
 	},
 );
 

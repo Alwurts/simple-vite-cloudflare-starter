@@ -15,7 +15,7 @@ function App() {
 
 		const data = await response.json();
 		console.log("data", data);
-		setName(data.name);
+		setName(data.result.name);
 	};
 
 	return (

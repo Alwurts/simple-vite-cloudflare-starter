@@ -9,6 +9,7 @@
 		"lint": "biome check --write src",
 		"preview": "vite preview --port 5173",
 		"db:generate": "drizzle-kit generate",
+		"db:generate:agent": "DRIZZLE_SCHEMA=./src/server/durable-objects/agent/db/schema.ts DRIZZLE_OUT=./src/server/durable-objects/agent/db/migrations drizzle-kit generate --config=drizzle-do.config.ts",
 		"db:migrate:dev": "wrangler d1 migrations apply simple-db --local",
 		"db:studio": "drizzle-kit studio"
 	},
