@@ -14,7 +14,8 @@ function App() {
 		});
 
 		const data = await response.json();
-		setName(data.agentName);
+		console.log("data", data);
+		setName(data.name);
 	};
 
 	return (

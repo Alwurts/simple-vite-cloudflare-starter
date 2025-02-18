@@ -7,7 +7,10 @@
 		"dev": "vite",
 		"build": "tsc -b && vite build",
 		"lint": "biome check --write src",
-		"preview": "vite preview --port 5173"
+		"preview": "vite preview --port 5173",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate:dev": "wrangler d1 migrations apply simple-db --local",
+		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
 		"@hono/zod-validator": "^0.4.3",
@@ -15,6 +18,8 @@
 		"@tailwindcss/vite": "^4.0.7",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
+		"dotenv": "^16.4.7",
+		"drizzle-orm": "^0.39.3",
 		"hono": "^4.7.2",
 		"lucide-react": "^0.475.0",
 		"react": "^19.0.0",
@@ -32,7 +37,10 @@
 		"@types/react": "^19.0.8",
 		"@types/react-dom": "^19.0.3",
 		"@vitejs/plugin-react": "^4.3.4",
+		"better-sqlite3": "^11.8.1",
+		"drizzle-kit": "^0.30.4",
 		"globals": "^15.14.0",
+		"tsx": "^4.19.2",
 		"typescript": "~5.7.2",
 		"vite": "^6.1.0",
 		"wrangler": "^3.109.1"

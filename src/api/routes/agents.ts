@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { zValidator } from "@hono/zod-validator";
 import type { HonoVariables } from "@/types/hono";
-
+import { usersTable } from "@/server/db/schema";
 const app = new Hono<HonoVariables>().post(
 	"/create",
 	zValidator(
@@ -14,8 +14,19 @@ const app = new Hono<HonoVariables>().post(
 	),
 	async (c) => {
 		const { name } = await c.req.valid("json");
+		const db = c.get("db");
+		const [result] = await db
+			.insert(usersTable)
+			.values({ name, age: 20, email: `test${name + Math.random()}@test.com` })
+			.returning();
 
-		return c.json({ agentName: name });
+		if (!result) {
+			throw new Error("Failed to create user");
+		}
+
+		console.log("result", result);
+
+		return c.json(result);
 	},
 );
 
