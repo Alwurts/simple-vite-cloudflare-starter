@@ -1,11 +1,8 @@
 import { Hono } from "hono";
 import agents from "./routes/agents";
+import type { HonoVariables } from "@/types/hono";
 
-interface Env {
-	ASSETS: Fetcher;
-}
-
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<HonoVariables>();
 
 const routes = app.route("/agents", agents).all("*", async (c) => {
 	return c.env.ASSETS.fetch(c.req.raw);
