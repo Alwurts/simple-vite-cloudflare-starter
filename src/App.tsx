@@ -1,15 +1,30 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { client } from "./lib/api-client";
 
 function App() {
+	const [name, setName] = useState("unknown");
+
+	const fetchName = async () => {
+		const response = await client.agents.create.$post({
+			json: {
+				name: "test",
+			},
+		});
+
+		const data = await response.json();
+		setName(data.agentName);
+	};
+
 	return (
 		<div className="flex justify-center items-center h-screen">
 			<Card>
 				<CardHeader>
-					<CardTitle>Hello World</CardTitle>
+					<CardTitle>Hello World {name}</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<Button>Click me</Button>
+					<Button onClick={fetchName}>Click me</Button>
 				</CardContent>
 			</Card>
 		</div>
