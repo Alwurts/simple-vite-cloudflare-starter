@@ -1,3 +1,4 @@
+/// <reference path="../../../workers-config.d.ts" />
 /// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from "cloudflare:workers";
@@ -9,7 +10,6 @@ import {
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 // @ts-ignore
 import migrations from "./db/migrations/migrations";
-import type { Env } from "@/types/worker-configurations";
 import { agentConfigTable } from "./db/schema";
 import { eq } from "drizzle-orm";
 
