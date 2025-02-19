@@ -17,6 +17,8 @@ export function ChatContent() {
 	const { messages, input, handleInputChange, handleSubmit } =
 		useChatWsContext();
 
+	console.log("messages", messages);
+
 	return (
 		<div className="flex-1 flex flex-col h-full overflow-y-auto">
 			<ChatMessageArea scrollButtonAlignment="center">

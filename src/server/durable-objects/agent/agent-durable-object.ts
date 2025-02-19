@@ -10,8 +10,10 @@ import {
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 // @ts-ignore
 import migrations from "./db/migrations/migrations";
-import type { WsChatRoomMessage } from "@/types/chat";
-
+import type { ChatMessage, WsChatRoomMessage } from "@/types/chat";
+import { generateText, type Message } from "ai";
+import { createGroq } from "@ai-sdk/groq";
+import { nanoid } from "nanoid";
 export class AgentDurableObject extends DurableObject<Env> {
 	storage: DurableObjectStorage;
 	db: DrizzleSqliteDODatabase;
@@ -44,6 +46,30 @@ export class AgentDurableObject extends DurableObject<Env> {
 
 			if (parsedMsg.type === "message-receive") {
 				console.log("message-receive", parsedMsg);
+				const messages: Omit<Message, "id">[] = [];
+				const newMessage: Omit<Message, "id"> = {
+					role: "user",
+					content: parsedMsg.message.content,
+					createdAt: new Date(parsedMsg.message.createdAt),
+				};
+				const aiResponse = await this.generateAiResponse([
+					...messages,
+					newMessage,
+				]);
+				console.log("aiResponse", aiResponse);
+				const newChatMessage: ChatMessage = {
+					id: nanoid(),
+					role: "assistant",
+					content: aiResponse,
+					createdAt: newMessage.createdAt?.getTime() ?? Date.now(),
+				};
+
+				const wsMessage: WsChatRoomMessage = {
+					type: "message-broadcast",
+					message: newChatMessage,
+				};
+
+				await webSocket.send(JSON.stringify(wsMessage));
 			}
 		} catch (err) {
 			if (err instanceof Error) {
@@ -59,5 +85,20 @@ export class AgentDurableObject extends DurableObject<Env> {
 		_wasClean: boolean,
 	) {
 		ws.close(code, "Durable Object is closing WebSocket");
+	}
+
+	private async generateAiResponse(messages: Omit<Message, "id">[]) {
+		const groqClient = createGroq({
+			baseURL: this.env.AI_GATEWAY_GROQ_URL,
+			apiKey: this.env.GROQ_API_KEY,
+		});
+
+		const result = await generateText({
+			model: groqClient("llama-3.3-70b-versatile"),
+			system: "You are a helpful assistant",
+			messages,
+		});
+
+		return result.text;
 	}
 }

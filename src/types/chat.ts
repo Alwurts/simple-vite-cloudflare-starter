@@ -1,6 +1,9 @@
-import type { Message } from "ai";
+import type { CoreMessage } from "ai";
 
-export type ChatMessage = Omit<Message, "createdAt"> & {
+export type ChatMessage = {
+	id: string;
+	role: CoreMessage["role"];
+	content: string;
 	createdAt: number;
 };
 
