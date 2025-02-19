@@ -26,7 +26,7 @@ const app = new Hono<HonoVariables>().post(
 			throw new Error("Failed to create user");
 		}
 
-		const agentId = AGENT_DURABLE_OBJECT.idFromString(result.id.toString());
+		const agentId = AGENT_DURABLE_OBJECT.newUniqueId();
 		const agent = AGENT_DURABLE_OBJECT.get(agentId);
 
 		await agent.migrate();

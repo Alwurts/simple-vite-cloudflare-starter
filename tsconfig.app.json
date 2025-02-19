@@ -10,7 +10,6 @@
 		/* Bundler mode */
 		"moduleResolution": "bundler",
 		"allowImportingTsExtensions": true,
-		"allowJs": true,
 		"isolatedModules": true,
 		"moduleDetection": "force",
 		"noEmit": true,
@@ -28,6 +27,6 @@
 		},
 		"types": ["@cloudflare/workers-types/2023-07-01"]
 	},
-	"include": ["src"],
+	"include": ["src"]
 	//"exclude": ["src/api"]
 }
