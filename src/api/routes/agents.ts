@@ -13,7 +13,10 @@ const app = new Hono<HonoVariables>().get("/chat", async (c) => {
 
 	await agent.migrate();
 
-	return await agent.fetch(c.req.raw);
+	const url = new URL(c.req.url);
+	url.searchParams.set("userId", "123");
+
+	return await agent.fetch(new Request(url, c.req.raw));
 });
 
 export default app;

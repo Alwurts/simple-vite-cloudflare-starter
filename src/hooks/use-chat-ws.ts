@@ -38,6 +38,7 @@ export function useChatWS() {
 					}
 					case "messages-sync": {
 						const newMessages = wsMessage.messages;
+						console.log("new messages", newMessages);
 						setMessages(newMessages);
 						break;
 					}

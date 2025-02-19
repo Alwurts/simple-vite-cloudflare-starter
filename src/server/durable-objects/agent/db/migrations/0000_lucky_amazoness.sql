@@ -1,6 +1,6 @@
-CREATE TABLE `agent_config` (
+CREATE TABLE `chat_messages` (
 	`id` text PRIMARY KEY NOT NULL,
-	`name` text NOT NULL,
-	`system_prompt` text NOT NULL,
+	`role` text NOT NULL,
+	`content` text NOT NULL,
 	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL
 );

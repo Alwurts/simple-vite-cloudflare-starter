@@ -10,34 +10,79 @@ import {
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 // @ts-ignore
 import migrations from "./db/migrations/migrations";
-import type { ChatMessage, WsChatRoomMessage } from "@/types/chat";
-import { generateText, type Message } from "ai";
+import type {
+	ChatMessage,
+	ChatMessageAI,
+	WsChatRoomMessage,
+} from "@/types/chat";
+import { generateText } from "ai";
 import { createGroq } from "@ai-sdk/groq";
 import { nanoid } from "nanoid";
+import { chatMessagesTable } from "./db/schema";
+import { desc } from "drizzle-orm";
+
+type Session = {
+	userId: string;
+};
+
 export class AgentDurableObject extends DurableObject<Env> {
 	storage: DurableObjectStorage;
 	db: DrizzleSqliteDODatabase;
+	sessions: Set<WebSocket>;
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
 		this.storage = ctx.storage;
 		this.db = drizzle(this.storage, { logger: false });
+
+		this.sessions = new Set();
+
+		// Restore any existing WebSocket sessions
+		for (const webSocket of ctx.getWebSockets()) {
+			this.sessions.add(webSocket);
+		}
 	}
 
 	async migrate() {
 		migrate(this.db, migrations);
 	}
 
-	async fetch(_request: Request): Promise<Response> {
+	async fetch(request: Request): Promise<Response> {
+		const url = new URL(request.url);
+		const userId = url.searchParams.get("userId");
+
+		if (!userId) {
+			return new Response("Missing user ID", { status: 400 });
+		}
+
 		const webSocketPair = new WebSocketPair();
 		const [client, server] = Object.values(webSocketPair);
 
 		this.ctx.acceptWebSocket(server);
 
+		const session: Session = {
+			userId,
+		};
+		server.serializeAttachment(session);
+		this.sessions.add(server);
+
+		const messages = await this.getChatMessages();
+
+		this.broadcastWebSocketMessage({
+			type: "messages-sync",
+			messages,
+		});
+
 		return new Response(null, {
 			status: 101,
 			webSocket: client,
 		});
+	}
+
+	private broadcastWebSocketMessage(message: WsChatRoomMessage) {
+		for (const ws of this.sessions) {
+			ws.send(JSON.stringify(message));
+		}
 	}
 
 	async webSocketMessage(webSocket: WebSocket, message: string) {
@@ -46,30 +91,41 @@ export class AgentDurableObject extends DurableObject<Env> {
 
 			if (parsedMsg.type === "message-receive") {
 				console.log("message-receive", parsedMsg);
-				const messages: Omit<Message, "id">[] = [];
-				const newMessage: Omit<Message, "id"> = {
+
+				const newUserMessage = await this.createChatMessage({
+					id: nanoid(),
 					role: "user",
 					content: parsedMsg.message.content,
-					createdAt: new Date(parsedMsg.message.createdAt),
-				};
+					createdAt: parsedMsg.message.createdAt,
+				});
+
+				const messageHistory = await this.getChatMessages(10);
+				const messages: ChatMessageAI[] = messageHistory.map((message) => ({
+					role: message.role,
+					content: message.content,
+					createdAt: new Date(message.createdAt),
+				}));
+
 				const aiResponse = await this.generateAiResponse([
 					...messages,
-					newMessage,
+					{
+						role: "user",
+						content: newUserMessage.content,
+						createdAt: new Date(newUserMessage.createdAt),
+					},
 				]);
-				console.log("aiResponse", aiResponse);
-				const newChatMessage: ChatMessage = {
+
+				const newAssistantMessage = await this.createChatMessage({
 					id: nanoid(),
 					role: "assistant",
 					content: aiResponse,
-					createdAt: newMessage.createdAt?.getTime() ?? Date.now(),
-				};
+					createdAt: new Date().getTime(),
+				});
 
-				const wsMessage: WsChatRoomMessage = {
+				this.broadcastWebSocketMessage({
 					type: "message-broadcast",
-					message: newChatMessage,
-				};
-
-				await webSocket.send(JSON.stringify(wsMessage));
+					message: newAssistantMessage,
+				});
 			}
 		} catch (err) {
 			if (err instanceof Error) {
@@ -78,16 +134,17 @@ export class AgentDurableObject extends DurableObject<Env> {
 		}
 	}
 
-	async webSocketClose(
-		ws: WebSocket,
-		code: number,
-		_reason: string,
-		_wasClean: boolean,
-	) {
-		ws.close(code, "Durable Object is closing WebSocket");
+	async webSocketClose(webSocket: WebSocket) {
+		this.sessions.delete(webSocket);
+		webSocket.close();
 	}
 
-	private async generateAiResponse(messages: Omit<Message, "id">[]) {
+	async webSocketError(webSocket: WebSocket) {
+		this.sessions.delete(webSocket);
+		webSocket.close();
+	}
+
+	private async generateAiResponse(messages: ChatMessageAI[]) {
 		const groqClient = createGroq({
 			baseURL: this.env.AI_GATEWAY_GROQ_URL,
 			apiKey: this.env.GROQ_API_KEY,
@@ -100,5 +157,25 @@ export class AgentDurableObject extends DurableObject<Env> {
 		});
 
 		return result.text;
+	}
+
+	async createChatMessage(message: ChatMessage) {
+		const [newMessage] = await this.db
+			.insert(chatMessagesTable)
+			.values(message)
+			.returning();
+		return newMessage;
+	}
+
+	async getChatMessages(limit?: number) {
+		const query = this.db
+			.select()
+			.from(chatMessagesTable)
+			.orderBy(desc(chatMessagesTable.createdAt));
+		if (limit) {
+			query.limit(limit);
+		}
+		const messages = await query;
+		return messages.reverse();
 	}
 }
