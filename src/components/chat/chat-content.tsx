@@ -21,22 +21,26 @@ export function ChatContent() {
 		<div className="flex-1 flex flex-col h-full overflow-y-auto">
 			<ChatMessageArea scrollButtonAlignment="center">
 				<div className="max-w-2xl mx-auto w-full px-4 py-8 space-y-4">
-					{messages.length > 0 ? (
-						messages.map((message) => {
+					{messages.map((message) => {
+						if (message.role !== "user") {
 							return (
 								<ChatMessage key={message.id} id={message.id}>
-									<ChatMessageAvatar
-										imageSrc={message.user.image ?? undefined}
-									/>
+									<ChatMessageAvatar />
 									<ChatMessageContent content={message.content} />
 								</ChatMessage>
 							);
-						})
-					) : (
-						<div className="text-center text-sm text-muted-foreground">
-							No messages yet
-						</div>
-					)}
+						}
+						return (
+							<ChatMessage
+								key={message.id}
+								id={message.id}
+								variant="bubble"
+								type="outgoing"
+							>
+								<ChatMessageContent content={message.content} />
+							</ChatMessage>
+						);
+					})}
 				</div>
 			</ChatMessageArea>
 			<div className="px-2 py-4 max-w-2xl mx-auto w-full">

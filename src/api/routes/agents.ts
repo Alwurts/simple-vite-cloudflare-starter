@@ -1,51 +1,19 @@
 import { Hono } from "hono";
-import { z } from "zod";
-
-import { zValidator } from "@hono/zod-validator";
 import type { HonoVariables } from "@/types/hono";
-import { usersTable } from "@/server/db/schema";
-const app = new Hono<HonoVariables>().post(
-	"/create",
-	zValidator(
-		"json",
-		z.object({
-			name: z.string().min(1),
-		}),
-	),
-	async (c) => {
-		const { name } = await c.req.valid("json");
-		const { AGENT_DURABLE_OBJECT } = c.env;
 
-		const db = c.get("db");
-		const [result] = await db
-			.insert(usersTable)
-			.values({ name, age: 20, email: `test${name + Math.random()}@test.com` })
-			.returning();
+const app = new Hono<HonoVariables>().get("/chat", async (c) => {
+	const upgradeHeader = c.req.header("Upgrade");
+	if (!upgradeHeader || upgradeHeader !== "websocket") {
+		return c.text("Expected Upgrade: websocket", 426);
+	}
 
-		if (!result) {
-			throw new Error("Failed to create user");
-		}
+	// Proceed with WebSocket connection
+	const id = c.env.AGENT_DURABLE_OBJECT.idFromName("agent");
+	const agent = c.env.AGENT_DURABLE_OBJECT.get(id);
 
-		const agentId = AGENT_DURABLE_OBJECT.newUniqueId();
-		const agent = AGENT_DURABLE_OBJECT.get(agentId);
+	await agent.migrate();
 
-		await agent.migrate();
-
-		await agent.upsertAgentConfig({
-			id: result.id.toString(),
-			name: result.name,
-			systemPrompt: "You are a helpful assistant.",
-		});
-
-		const agentConfig = await agent.getAgentConfig(result.id.toString());
-
-		console.log("result", result);
-
-		return c.json({
-			result,
-			agentConfig,
-		});
-	},
-);
+	return await agent.fetch(c.req.raw);
+});
 
 export default app;

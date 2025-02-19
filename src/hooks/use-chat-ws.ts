@@ -1,22 +1,12 @@
 import { useCallback, useRef, useState, useEffect } from "react";
-import type {
-	ChatRoomMessage,
-	/* ChatRoomMessagePartial, */
-	WsChatRoomMessage,
-	ChatRoomMember,
-} from "@/types/chat";
-/* import { nanoid } from "nanoid"; */
+import type { ChatMessage, WsChatRoomMessage } from "@/types/chat";
+import { nanoid } from "nanoid";
 
 //const RETRY_DELAYS = [1000, 2000, 5000, 10000]; // Increasing delays between retries in ms
 
-export interface UseChatWSProps {
-	roomId: string;
-}
-
-export function useChatWS({ roomId }: UseChatWSProps) {
+export function useChatWS() {
 	const wsRef = useRef<WebSocket | null>(null);
-	const [messages, setMessages] = useState<ChatRoomMessage[]>([]);
-	const [members, setMembers] = useState<ChatRoomMember[]>([]);
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [input, setInput] = useState("");
 	const [connectionStatus, setConnectionStatus] = useState<
 		"disconnected" | "connecting" | "connected"
@@ -28,9 +18,7 @@ export function useChatWS({ roomId }: UseChatWSProps) {
 			process.env.NEXT_PUBLIC_DO_CHAT_API_HOST?.replace(/^https?:\/\//, "") ??
 			""; */
 		const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-		const ws = new WebSocket(
-			`${wsProtocol}://localhost:5173/websocket/chat-room/${roomId}`,
-		);
+		const ws = new WebSocket(`${wsProtocol}://localhost:5173/agents/chat`);
 
 		ws.onopen = () => {
 			console.log("WebSocket connected");
@@ -53,11 +41,6 @@ export function useChatWS({ roomId }: UseChatWSProps) {
 						setMessages(newMessages);
 						break;
 					}
-					case "member-sync": {
-						const newMembers = wsMessage.members;
-						setMembers(newMembers);
-						break;
-					}
 					default:
 						console.warn("Unknown message type:", wsMessage.type);
 				}
@@ -76,7 +59,7 @@ export function useChatWS({ roomId }: UseChatWSProps) {
 		};
 
 		return ws;
-	}, [roomId]);
+	}, []);
 
 	// Initialize WebSocket connection
 	useEffect(() => {
@@ -104,23 +87,20 @@ export function useChatWS({ roomId }: UseChatWSProps) {
 				return;
 			}
 
-			/* const newMessagePartial: ChatRoomMessagePartial = {
+			const newMessage: ChatMessage = {
 				id: nanoid(),
 				content: input.trim(),
 				createdAt: Date.now(),
-			}; */
+				role: "user",
+			};
 
-			/* const wsMessage: WsChatRoomMessage = {
+			const wsMessage: WsChatRoomMessage = {
 				type: "message-receive",
-				message: newMessagePartial,
-			}; */
-
-			/* const newMessage: ChatRoomMessage = {
-				...newMessagePartial,
+				message: newMessage,
 			};
 
 			wsRef.current.send(JSON.stringify(wsMessage));
-			setMessages((prev) => [...prev, newMessage]); */
+			setMessages((prev) => [...prev, newMessage]);
 			setInput("");
 		},
 		[input],
@@ -142,7 +122,6 @@ export function useChatWS({ roomId }: UseChatWSProps) {
 
 	return {
 		messages,
-		members,
 		input,
 		setInput,
 		handleInputChange,

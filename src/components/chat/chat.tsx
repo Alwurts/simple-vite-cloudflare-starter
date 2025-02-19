@@ -5,15 +5,8 @@ import { ChatHeader } from "@/components/chat/chat-header";
 import { ChatContent } from "./chat-content";
 
 export function Chat() {
-	/* const queryParams = useSearchParams();
-	const roomId = queryParams.get("roomId");
-
-	if (!roomId) {
-		return <ChatPlaceholderNoRoomSelected />;
-	} */
-
 	return (
-		<ChatWsProvider roomId={""}>
+		<ChatWsProvider>
 			<ChatHeader />
 			<ChatContent />
 		</ChatWsProvider>

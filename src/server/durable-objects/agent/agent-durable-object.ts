@@ -10,8 +10,7 @@ import {
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 // @ts-ignore
 import migrations from "./db/migrations/migrations";
-import { agentConfigTable } from "./db/schema";
-import { eq } from "drizzle-orm";
+import type { WsChatRoomMessage } from "@/types/chat";
 
 export class AgentDurableObject extends DurableObject<Env> {
 	storage: DurableObjectStorage;
@@ -27,40 +26,38 @@ export class AgentDurableObject extends DurableObject<Env> {
 		migrate(this.db, migrations);
 	}
 
-	/* private async generateAiResponse(messages: CoreMessage[]) {
-		const agentConfig = await this.getAgentConfig();
+	async fetch(_request: Request): Promise<Response> {
+		const webSocketPair = new WebSocketPair();
+		const [client, server] = Object.values(webSocketPair);
 
-		const groqClient = createGroq({
-			baseURL: this.env.AI_GATEWAY_GROQ_URL,
-			apiKey: this.env.GROQ_API_KEY,
+		this.ctx.acceptWebSocket(server);
+
+		return new Response(null, {
+			status: 101,
+			webSocket: client,
 		});
-
-		const result = await generateText({
-			model: groqClient("llama-3.3-70b-versatile"),
-			system: getAgentPrompt({
-				agentConfig,
-			}),
-			messages,
-		});
-
-		return result.text;
-	} */
-
-	async upsertAgentConfig(agentConfig: typeof agentConfigTable.$inferInsert) {
-		await this.db
-			.insert(agentConfigTable)
-			.values(agentConfig)
-			.onConflictDoUpdate({
-				target: [agentConfigTable.id],
-				set: agentConfig,
-			});
 	}
 
-	async getAgentConfig(id: string) {
-		const result = await this.db
-			.select()
-			.from(agentConfigTable)
-			.where(eq(agentConfigTable.id, id));
-		return result[0];
+	async webSocketMessage(webSocket: WebSocket, message: string) {
+		try {
+			const parsedMsg: WsChatRoomMessage = JSON.parse(message);
+
+			if (parsedMsg.type === "message-receive") {
+				console.log("message-receive", parsedMsg);
+			}
+		} catch (err) {
+			if (err instanceof Error) {
+				webSocket.send(JSON.stringify({ error: err.message }));
+			}
+		}
+	}
+
+	async webSocketClose(
+		ws: WebSocket,
+		code: number,
+		_reason: string,
+		_wasClean: boolean,
+	) {
+		ws.close(code, "Durable Object is closing WebSocket");
 	}
 }
