@@ -7,7 +7,6 @@ declare global {
 		OPENAI_API_KEY: string;
 		GROQ_API_KEY: string;
 		ASSETS: Fetcher;
-		DB: D1Database;
 		AGENT_DURABLE_OBJECT: DurableObjectNamespace<AgentDurableObject>; // Use the imported type
 	}
 }

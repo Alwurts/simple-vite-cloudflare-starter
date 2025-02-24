@@ -1,12 +1,7 @@
-import { AppLayout } from "@/components/layout/app-layout";
-import { Chat } from "@/components/chat/chat";
+import { PingPongTester } from "@/components/PingPongTester";
 
 function App() {
-	return (
-		<AppLayout>
-			<Chat />
-		</AppLayout>
-	);
+	return <PingPongTester />;
 }
 
 export default App;

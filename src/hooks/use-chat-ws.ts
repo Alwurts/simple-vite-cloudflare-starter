@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from "react";
-import type { ChatMessage, WsChatRoomMessage } from "@/types/chat";
+import type { ChatMessage, WsMessage } from "@/types/chat";
 import { nanoid } from "nanoid";
 
 //const RETRY_DELAYS = [1000, 2000, 5000, 10000]; // Increasing delays between retries in ms
@@ -27,23 +27,15 @@ export function useChatWS() {
 
 		ws.onmessage = (event) => {
 			try {
-				const wsMessage: WsChatRoomMessage = JSON.parse(event.data);
+				const wsMessage: WsMessage = JSON.parse(event.data);
 
 				switch (wsMessage.type) {
-					case "message-broadcast": {
-						const newMessage = wsMessage.message;
-						console.log("new message", newMessage);
-						setMessages((prev) => [...prev, newMessage]);
-						break;
-					}
-					case "messages-sync": {
-						const newMessages = wsMessage.messages;
-						console.log("new messages", newMessages);
-						setMessages(newMessages);
+					case "pong": {
+						console.log("pong");
 						break;
 					}
 					default:
-						console.warn("Unknown message type:", wsMessage.type);
+						console.warn("Unknown message type:", wsMessage);
 				}
 			} catch (error) {
 				console.error("Failed to parse message:", error);
@@ -95,9 +87,8 @@ export function useChatWS() {
 				role: "user",
 			};
 
-			const wsMessage: WsChatRoomMessage = {
-				type: "message-receive",
-				message: newMessage,
+			const wsMessage: WsMessage = {
+				type: "ping",
 			};
 
 			wsRef.current.send(JSON.stringify(wsMessage));

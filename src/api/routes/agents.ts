@@ -11,12 +11,7 @@ const app = new Hono<HonoVariables>().get("/chat", async (c) => {
 	const id = c.env.AGENT_DURABLE_OBJECT.idFromName("agent");
 	const agent = c.env.AGENT_DURABLE_OBJECT.get(id);
 
-	await agent.migrate();
-
-	const url = new URL(c.req.url);
-	url.searchParams.set("userId", "123");
-
-	return await agent.fetch(new Request(url, c.req.raw));
+	return await agent.fetch(c.req.raw);
 });
 
 export default app;

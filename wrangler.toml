@@ -4,12 +4,6 @@ assets = { not_found_handling = "single-page-application", binding = "ASSETS" }
 main = "./src/api/index.ts"
 node_compat = true
 
-[[ d1_databases ]]
-binding = "DB"
-database_name = "simple-db"
-database_id = "YOUR DB ID"
-migrations_dir = "drizzle"
-
 [[durable_objects.bindings]]
 name = "AGENT_DURABLE_OBJECT"
 class_name = "AgentDurableObject"
@@ -20,8 +14,6 @@ class_name = "AgentDurableObject"
 tag = "v1"
 new_sqlite_classes = ["AgentDurableObject"]
 
-# We need rules so we can import migrations in the next steps
-[[rules]] 
-type = "Text"
-globs = ["**/*.sql"]
-fallthrough = true
+[observability]
+enabled = true
+head_sampling_rate = 1 # optional. default = 1.
