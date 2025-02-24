@@ -1,7 +1,7 @@
-import { PingPongTester } from "@/components/PingPongTester";
+import { ChatComponent } from "@/components/ChatComponent";
 
 function App() {
-	return <PingPongTester />;
+	return <ChatComponent />;
 }
 
 export default App;
