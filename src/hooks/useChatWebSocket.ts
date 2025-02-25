@@ -31,7 +31,7 @@ export function useChatWebSocket({
 				console.log("WebSocket connected");
 			});
 			socket.addEventListener("message", (event) => {
-				console.log("message", event.data);
+				console.log("WebSocket message received:", event.data);
 			});
 			socket.addEventListener("close", (event) => {
 				setIsConnected(false);
@@ -64,44 +64,13 @@ export function useChatWebSocket({
 		_request: RequestInfo | URL,
 		options: RequestInit = {},
 	) {
-		const {
-			method,
-			keepalive,
-			headers,
-			body,
-			redirect,
-			integrity,
-			signal,
-			credentials,
-			mode,
-			referrer,
-			referrerPolicy,
-			window,
-		} = options;
-		console.log("options", options);
+		const { method, body, signal } = options;
 		const id = crypto.randomUUID();
 		const abortController = new AbortController();
 
 		signal?.addEventListener("abort", () => {
 			abortController.abort();
 		});
-
-		socketRef.current?.addEventListener(
-			"message",
-			(event) => {
-				const data = JSON.parse(event.data) as WsOutgoingMessage;
-				if (data.type === "use_chat_response") {
-					if (data.id === id) {
-						controller.enqueue(new TextEncoder().encode(data.body));
-						if (data.done) {
-							controller.close();
-							abortController.abort();
-						}
-					}
-				}
-			},
-			{ signal: abortController.signal },
-		);
 
 		let controller: ReadableStreamDefaultController;
 
@@ -111,25 +80,29 @@ export function useChatWebSocket({
 			},
 		});
 
+		socketRef.current?.addEventListener(
+			"message",
+			(event) => {
+				const data = JSON.parse(event.data) as WsOutgoingMessage;
+				if (data.type === "use_chat_response" && data.id === id) {
+					controller.enqueue(new TextEncoder().encode(data.body));
+					if (data.done) {
+						controller.close();
+						abortController.abort();
+					}
+				}
+			},
+			{ signal: abortController.signal },
+		);
+
 		const newMessageRequest: UseChatMessageRequest = {
 			type: "use_chat_request",
 			id,
 			init: {
 				method,
-				keepalive,
-				headers,
 				body,
-				redirect,
-				integrity,
-				credentials,
-				mode,
-				referrer,
-				referrerPolicy,
-				window,
 			},
 		};
-
-		console.log("newMessageRequest", newMessageRequest);
 
 		socketRef.current?.send(JSON.stringify(newMessageRequest));
 

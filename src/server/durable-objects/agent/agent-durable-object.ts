@@ -9,8 +9,7 @@ import type {
 import { DurableObject } from "cloudflare:workers";
 import type { Message } from "ai";
 import { streamText } from "ai";
-import { groq } from "@ai-sdk/groq";
-
+import { createGroq } from "@ai-sdk/groq";
 export class AgentDurableObject extends DurableObject<Env> {
 	/* constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -46,60 +45,86 @@ export class AgentDurableObject extends DurableObject<Env> {
 		ws: WebSocket,
 		{ id, init }: UseChatMessageRequest,
 	) {
-		const {
-			method,
-			// keepalive,
-			// headers,
-			body,
-			// redirect,
-			// integrity,
-			// credentials,
-			// mode,
-			// referrer,
-			// referrerPolicy,
-			// window,
-			// dispatcher,
-			// duplex
-		} = init;
-
+		const { method, body } = init;
 		const requestBody = JSON.parse(body as string);
 		const messages: Message[] = requestBody.messages;
-
-		console.log("request", {
-			id,
-			init,
-		});
-
-		console.log("connections", this.ctx.getWebSockets().length);
 
 		if (method !== "POST") {
 			return;
 		}
 
-		const result = streamText({
-			model: groq("llama3-70b-8192"),
-			system: "You are a helpful assistant.",
-			messages,
-		});
+		try {
+			const groqClient = createGroq({
+				baseURL: this.env.AI_GATEWAY_GROQ_URL,
+				apiKey: this.env.GROQ_API_KEY,
+			});
 
-		for await (const chunk of result) {
-			const body = "";
-			const newChatResponse: UseChatMessageResponse = {
+			const result = streamText({
+				model: groqClient("llama3-70b-8192"),
+				system: "You are a helpful assistant.",
+				messages,
+			});
+
+			// Handle the stream correctly according to Data Stream Protocol
+			for await (const part of result.fullStream) {
+				let eventString: string;
+
+				switch (part.type) {
+					case "text-delta":
+						// Properly JSON stringify the text delta
+						eventString = `0:${JSON.stringify(part.textDelta)}\n`;
+						break;
+					case "finish": {
+						// Send the finish step part
+						eventString = `e:${JSON.stringify({
+							finishReason: part.finishReason,
+							usage: {
+								promptTokens: part.usage.promptTokens,
+								completionTokens: part.usage.completionTokens,
+							},
+							isContinued: false,
+						})}\n`;
+
+						// Also send the finish message part
+						const finalMessage: UseChatMessageResponse = {
+							type: "use_chat_response",
+							id,
+							body: `d:${JSON.stringify({
+								finishReason: part.finishReason,
+								usage: {
+									promptTokens: part.usage.promptTokens,
+									completionTokens: part.usage.completionTokens,
+								},
+							})}\n`,
+							done: true,
+						};
+						ws.send(JSON.stringify(finalMessage));
+						break;
+					}
+					default:
+						continue;
+				}
+
+				const response: UseChatMessageResponse = {
+					type: "use_chat_response",
+					id,
+					body: eventString,
+					done: part.type === "finish",
+				};
+				ws.send(JSON.stringify(response));
+			}
+		} catch (error) {
+			console.error("Error handling chat request:", error);
+
+			// Send an error event
+			const errorResponse: UseChatMessageResponse = {
 				type: "use_chat_response",
 				id,
-				body,
-				done: false,
+				body: `3:${JSON.stringify("Failed to process request")}\n`,
+				done: true,
 			};
-			ws.send(JSON.stringify(newChatResponse));
+			ws.send(JSON.stringify(errorResponse));
 		}
-
-		const finalChatResponse: UseChatMessageResponse = {
-			type: "use_chat_response",
-			id,
-			body: "",
-			done: true,
-		};
-		ws.send(JSON.stringify(finalChatResponse));
 	}
 
 	async webSocketClose(ws: WebSocket, code: number, reason: string) {
