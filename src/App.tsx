@@ -1,4 +1,4 @@
-import { ChatComponent } from "@/components/ChatComponent";
+import { ChatComponent } from "@/components/chat-component";
 
 function App() {
 	return <ChatComponent />;

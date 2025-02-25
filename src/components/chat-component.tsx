@@ -1,4 +1,4 @@
-import { useChatWebSocket } from "../hooks/useChatWebSocket";
+import { useChatWebSocket } from "../hooks/use-chat-web-socket";
 
 export function ChatComponent() {
 	const {
